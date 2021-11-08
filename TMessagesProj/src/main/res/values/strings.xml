@@ -373,6 +373,9 @@
     <string name="ChannelVerifiedWarning">Warning</string>
     <string name="ChannelUsernamePlaceholder">link</string>
     <string name="ChannelPrivateLinkHelp">People can join your channel by following this link. You can revoke the link any time.</string>
+    <string name="ChannelRestrictSavingContent">Restrict saving content</string>
+    <string name="ChannelRestrictSavingContentHelp">Participants won\'t be able to forward messages from this channel or save the media files</string>
+
     <string name="MegaPrivateLinkHelp">People can join your group by following this link. You can revoke the link any time.</string>
     <string name="DescriptionOptionalPlaceholder">Description (optional)</string>
     <string name="DescriptionPlaceholder">Description</string>
@@ -390,6 +393,7 @@
     <string name="MegaPrivateInfo">Private groups can only be joined if you were invited or have an invite link.</string>
     <string name="ChannelLinkTitle">Permanent link</string>
     <string name="ChannelInviteLinkTitle">Invite Link</string>
+    <string name="ChannelSavedContentTitle">Saving Content</string>
     <string name="GroupAddMembers">Add Members</string>
     <string name="ChannelAddSubscribers">Add Subscribers</string>
     <string name="LeaveChannel">Leave Channel</string>
