@@ -856,6 +856,7 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
             savedContentInfoCell.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText4));
             savedContentInfoCell.setBackgroundDrawable(Theme.getThemedDrawable(typeInfoCell.getContext(), R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
             savedContentInfoCell.setText(LocaleController.getString("ChannelRestrictSavingContentHelp", R.string.ChannelRestrictSavingContentHelp));
+            savedContentInfoCell.setVisibility(isPrivate ? View.VISIBLE : View.GONE);
 
             publicContainer.setVisibility(isPrivate ? View.GONE : View.VISIBLE);
             privateContainer.setVisibility(isPrivate ? View.VISIBLE : View.GONE);

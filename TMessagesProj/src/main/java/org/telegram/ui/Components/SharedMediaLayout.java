@@ -10,6 +10,7 @@ import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -385,6 +386,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
     private ActionBarMenuItem searchItem;
     public ImageView photoVideoOptionsItem;
     private ActionBarMenuItem forwardItem;
+    private HintView forwardHintView;
     private ActionBarMenuItem gotoItem;
     private int searchItemState;
     private Drawable pinnedHeaderShadowDrawable;
@@ -1425,14 +1427,20 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
             actionModeViews.add(gotoItem);
             gotoItem.setOnClickListener(v -> onActionBarItemClick(gotochat));
 
-            forwardItem = new ActionBarMenuItem(context, null, Theme.getColor(Theme.key_actionBarActionModeDefaultSelector), Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2), false);
+            TLRPC.Chat chat = profileActivity.getMessagesController().getChat(-dialog_id);
+            int forwardIconColor = Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2);
+            if (chat != null && chat.noforwards)  {
+                forwardIconColor = Theme.getColor(Theme.key_windowBackgroundWhiteGrayText7);
+            }
+            forwardItem = new ActionBarMenuItem(context, null, Theme.getColor(Theme.key_actionBarActionModeDefaultSelector), forwardIconColor, false);
             forwardItem.setIcon(R.drawable.msg_forward);
             forwardItem.setContentDescription(LocaleController.getString("Forward", R.string.Forward));
             forwardItem.setDuplicateParentStateEnabled(false);
             actionModeLayout.addView(forwardItem, new LinearLayout.LayoutParams(AndroidUtilities.dp(54), ViewGroup.LayoutParams.MATCH_PARENT));
             actionModeViews.add(forwardItem);
             forwardItem.setOnClickListener(v -> onActionBarItemClick(forward));
-        }
+
+          }
         deleteItem = new ActionBarMenuItem(context, null, Theme.getColor(Theme.key_actionBarActionModeDefaultSelector), Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2), false);
         deleteItem.setIcon(R.drawable.msg_delete);
         deleteItem.setContentDescription(LocaleController.getString("Delete", R.string.Delete));
@@ -2141,6 +2149,11 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
         if (hasMedia[0] >= 0) {
             loadFastScrollData(false);
         }
+
+        forwardHintView = new HintView(getContext(), 4);
+        forwardHintView.setAlpha(0.0f);
+        forwardHintView.setVisibility(View.INVISIBLE);
+
     }
 
     private int getMessageId(View child) {
@@ -3030,63 +3043,72 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                 cantDeleteMessagesCount = 0;
             }, null);
         } else if (id == forward) {
-            Bundle args = new Bundle();
-            args.putBoolean("onlySelect", true);
-            args.putInt("dialogsType", 3);
-            DialogsActivity fragment = new DialogsActivity(args);
-            fragment.setDelegate((fragment1, dids, message, param) -> {
-                ArrayList<MessageObject> fmessages = new ArrayList<>();
-                for (int a = 1; a >= 0; a--) {
-                    ArrayList<Integer> ids = new ArrayList<>();
-                    for (int b = 0; b < selectedFiles[a].size(); b++) {
-                        ids.add(selectedFiles[a].keyAt(b));
-                    }
-                    Collections.sort(ids);
-                    for (Integer id1 : ids) {
-                        if (id1 > 0) {
-                            fmessages.add(selectedFiles[a].get(id1));
-                        }
-                    }
-                    selectedFiles[a].clear();
+            TLRPC.Chat currentChat = profileActivity.getMessagesController().getChat(-dialog_id);
+            if (currentChat != null && currentChat.noforwards) {
+                if (forwardHintView.getParent() == null) {
+                    profileActivity.getLayoutContainer().addView(forwardHintView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.LEFT | Gravity.TOP, 19, 0, 19, 0));
                 }
-                cantDeleteMessagesCount = 0;
-                showActionMode(false);
-
-                if (dids.size() > 1 || dids.get(0) == profileActivity.getUserConfig().getClientUserId() || message != null) {
-                    updateRowsSelection();
-                    for (int a = 0; a < dids.size(); a++) {
-                        long did = dids.get(a);
-                        if (message != null) {
-                            profileActivity.getSendMessagesHelper().sendMessage(message.toString(), did, null, null, null, true, null, null, null, true, 0, null);
+                forwardHintView.setText(LocaleController.getString("ChannelForwardsRestricted", R.string.ChannelForwardsRestricted));
+                forwardHintView.showForView(forwardItem.getContentView(), true);
+            } else {
+                Bundle args = new Bundle();
+                args.putBoolean("onlySelect", true);
+                args.putInt("dialogsType", 3);
+                DialogsActivity fragment = new DialogsActivity(args);
+                fragment.setDelegate((fragment1, dids, message, param) -> {
+                    ArrayList<MessageObject> fmessages = new ArrayList<>();
+                    for (int a = 1; a >= 0; a--) {
+                        ArrayList<Integer> ids = new ArrayList<>();
+                        for (int b = 0; b < selectedFiles[a].size(); b++) {
+                            ids.add(selectedFiles[a].keyAt(b));
                         }
-                        profileActivity.getSendMessagesHelper().sendMessage(fmessages, did, false, false, true, 0);
+                        Collections.sort(ids);
+                        for (Integer id1 : ids) {
+                            if (id1 > 0) {
+                                fmessages.add(selectedFiles[a].get(id1));
+                            }
+                        }
+                        selectedFiles[a].clear();
                     }
-                    fragment1.finishFragment();
-                } else {
-                    long did = dids.get(0);
-                    Bundle args1 = new Bundle();
-                    args1.putBoolean("scrollToTopOnResume", true);
-                    if (DialogObject.isEncryptedDialog(did)) {
-                        args1.putInt("enc_id", DialogObject.getEncryptedChatId(did));
+                    cantDeleteMessagesCount = 0;
+                    showActionMode(false);
+
+                    if (dids.size() > 1 || dids.get(0) == profileActivity.getUserConfig().getClientUserId() || message != null) {
+                        updateRowsSelection();
+                        for (int a = 0; a < dids.size(); a++) {
+                            long did = dids.get(a);
+                            if (message != null) {
+                                profileActivity.getSendMessagesHelper().sendMessage(message.toString(), did, null, null, null, true, null, null, null, true, 0, null);
+                            }
+                            profileActivity.getSendMessagesHelper().sendMessage(fmessages, did, false, false, true, 0);
+                        }
+                        fragment1.finishFragment();
                     } else {
-                        if (DialogObject.isUserDialog(did)) {
-                            args1.putLong("user_id", did);
+                        long did = dids.get(0);
+                        Bundle args1 = new Bundle();
+                        args1.putBoolean("scrollToTopOnResume", true);
+                        if (DialogObject.isEncryptedDialog(did)) {
+                            args1.putInt("enc_id", DialogObject.getEncryptedChatId(did));
                         } else {
-                            args1.putLong("chat_id", -did);
+                            if (DialogObject.isUserDialog(did)) {
+                                args1.putLong("user_id", did);
+                            } else {
+                                args1.putLong("chat_id", -did);
+                            }
+                            if (!profileActivity.getMessagesController().checkCanOpenChat(args1, fragment1)) {
+                                return;
+                            }
                         }
-                        if (!profileActivity.getMessagesController().checkCanOpenChat(args1, fragment1)) {
-                            return;
-                        }
+
+                        profileActivity.getNotificationCenter().postNotificationName(NotificationCenter.closeChats);
+
+                        ChatActivity chatActivity = new ChatActivity(args1);
+                        fragment1.presentFragment(chatActivity, true);
+                        chatActivity.showFieldPanelForForward(true, fmessages);
                     }
-
-                    profileActivity.getNotificationCenter().postNotificationName(NotificationCenter.closeChats);
-
-                    ChatActivity chatActivity = new ChatActivity(args1);
-                    fragment1.presentFragment(chatActivity, true);
-                    chatActivity.showFieldPanelForForward(true, fmessages);
-                }
-            });
-            profileActivity.presentFragment(fragment);
+                });
+                profileActivity.presentFragment(fragment);
+            }
         } else if (id == gotochat) {
             if (selectedFiles[0].size() + selectedFiles[1].size() != 1) {
                 return;
