@@ -123,6 +123,8 @@ public class MessageObject {
     public boolean isRestrictedMessage;
     public long loadedFileSize;
 
+    public String sendAsName;
+
     public byte[] sponsoredId;
     public int sponsoredChannelPost;
     public String botStartParam;

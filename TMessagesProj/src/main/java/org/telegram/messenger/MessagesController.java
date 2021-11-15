@@ -60,6 +60,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -170,6 +171,10 @@ public class MessagesController extends BaseController implements NotificationCe
     private ArrayList<Long> loadedFullChats = new ArrayList<>();
     private LongSparseArray<LongSparseArray<TLRPC.ChannelParticipant>> channelAdmins = new LongSparseArray<>();
     private LongSparseIntArray loadingChannelAdmins = new LongSparseIntArray();
+
+    private LongSparseArray<TLRPC.User> sendAsUsers = new LongSparseArray<>();
+    private LongSparseArray<TLRPC.Chat> sendAsChats = new LongSparseArray<>();
+    private LongSparseArray<TLRPC.Peer> sendAsPeers = new LongSparseArray<>();
 
     private SparseIntArray migratedChats = new SparseIntArray();
 
@@ -10876,6 +10881,31 @@ public class MessagesController extends BaseController implements NotificationCe
             getMessagesStorage().deletePushMessages(dialogId, ids);
             ArrayList<Long> dialogIds = getMessagesStorage().markMessagesAsDeleted(dialogId, ids, false, true, false);
             getMessagesStorage().updateDialogsWithDeletedMessages(dialogId, channelId, ids, dialogIds, false);
+        });
+    }
+
+    public void loadSendAsPeers(TLRPC.InputPeer peer) {
+        TLRPC.TL_channels_getSendAs req = new TLRPC.TL_channels_getSendAs();
+        req.peer = peer;
+        getConnectionsManager().sendRequest(req, (response, error) -> {
+            if (error == null) {
+                TLRPC.TL_channels_sendAsPeers sendAsPeers = (TLRPC.TL_channels_sendAsPeers) response;
+                if (sendAsPeers.users != null) {
+                    for (int i = 0; i < sendAsPeers.users.size(); i++) {
+                        TLRPC.User user = sendAsPeers.users.get(i);
+                        sendAsUsers.put(user.id, user);
+                    }
+                }
+                if (sendAsPeers.chats != null) {
+                    for (int i = 0; i < sendAsPeers.chats.size(); i++) {
+                        TLRPC.Chat chat = sendAsPeers.chats.get(i);
+                        sendAsChats.put(chat.id, chat);
+                    }
+                }
+                AndroidUtilities.runOnUIThread(() -> {
+                    getNotificationCenter().postNotificationName(NotificationCenter.sendAsLoaded, sendAsPeers.users, sendAsPeers.chats);
+                });
+            }
         });
     }
 

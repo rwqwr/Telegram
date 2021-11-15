@@ -1532,6 +1532,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         getNotificationCenter().addObserver(this, NotificationCenter.scheduledMessagesUpdated);
         getNotificationCenter().addObserver(this, NotificationCenter.diceStickersDidLoad);
         getNotificationCenter().addObserver(this, NotificationCenter.dialogDeleted);
+        getNotificationCenter().addObserver(this, NotificationCenter.sendAsLoaded);
 
         super.onFragmentCreate();
 
@@ -1589,6 +1590,13 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             if (ChatObject.isChannel(currentChat) && !getMessagesController().isChannelAdminsLoaded(currentChat.id)) {
                 getMessagesController().loadChannelAdmins(currentChat.id, true);
             }
+
+            if (ChatObject.isMegagroup(currentChat)) {
+                if (currentChat.has_geo || currentChat.has_link || !currentChat.username.isEmpty()) {
+                    getMessagesController().loadSendAsPeers(MessagesController.getInputPeer(currentChat));
+                }
+            }
+
             fillInviterId(false);
             if (chatMode != MODE_PINNED) {
                 getMessagesStorage().loadChatInfo(currentChat.id, ChatObject.isChannel(currentChat), null, true, false, startLoadFromMessageId);
@@ -1820,6 +1828,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         getNotificationCenter().removeObserver(this, NotificationCenter.diceStickersDidLoad);
         getNotificationCenter().removeObserver(this, NotificationCenter.dialogDeleted);
         getNotificationCenter().removeObserver(this, NotificationCenter.didLoadSponsoredMessages);
+        getNotificationCenter().removeObserver(this, NotificationCenter.sendAsLoaded);
         if (currentEncryptedChat != null) {
             getNotificationCenter().removeObserver(this, NotificationCenter.didVerifyMessagesStickers);
         }
@@ -15744,6 +15753,12 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                     themeDelegate.setCurrentTheme(themeDelegate.chatTheme, true, theme.isDark());
                 }
             }
+        } else if (id == NotificationCenter.sendAsLoaded) {
+            ArrayList<TLRPC.User> sendAsUsers = (ArrayList<TLRPC.User>) args[0];
+            ArrayList<TLRPC.Chat> sendAsChats = (ArrayList<TLRPC.Chat>) args[1];
+            if (chatActivityEnterView != null) {
+                chatActivityEnterView.sendersAdapter.setPeers(sendAsUsers, sendAsChats);
+            }
         }
     }
 
@@ -20320,11 +20335,11 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             chatListView.stopScroll();
             chatLayoutManager.setCanScrollVertically(false);
             scrimView = v;
-            if (scrimView instanceof ChatMessageCell) {
-                ChatMessageCell cell = (ChatMessageCell) scrimView;
-                cell.setInvalidatesParent(true);
-                restartSticker(cell);
-            }
+//            if (scrimView instanceof ChatMessageCell) {
+//                ChatMessageCell cell = (ChatMessageCell) scrimView;
+//                cell.setInvalidatesParent(true);
+//                restartSticker(cell);
+//            }
             contentView.invalidate();
             chatListView.invalidate();
             if (scrimAnimatorSet != null) {

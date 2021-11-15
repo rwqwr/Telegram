@@ -3579,10 +3579,37 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                 isFinalGroupMedia = params.get("final") != null;
             }
 
+            TLRPC.ChatFull currentChat;
+
+            if (sendToPeer instanceof TLRPC.TL_inputPeerChat) {
+                currentChat = getMessagesController().getChatFull(sendToPeer.chat_id);
+            } else if (sendToPeer instanceof TLRPC.TL_inputPeerUser) {
+                currentChat = getMessagesController().getChatFull(sendToPeer.user_id);
+            } else {
+                currentChat = getMessagesController().getChatFull(sendToPeer.channel_id);
+            }
+
+            TLRPC.InputPeer sendAs = null;
+            if (currentChat != null && currentChat.default_send_as != null) {
+                sendAs = getMessagesController().getInputPeer(currentChat.default_send_as);
+                newMsg.from_id = currentChat.default_send_as;
+            }
+
             newMsgObj = new MessageObject(currentAccount, newMsg, replyToMsg, true, true);
             newMsgObj.sendAnimationData = sendAnimationData;
             newMsgObj.wasJustSent = true;
             newMsgObj.scheduled = scheduleDate != 0;
+
+            if (sendAs != null) {
+                if (sendAs instanceof TLRPC.TL_inputPeerChat) {
+                    newMsgObj.sendAsName = getMessagesController().getChat(sendAs.chat_id).title;
+                } else if (sendAs instanceof TLRPC.TL_inputPeerUser){
+                    newMsgObj.sendAsName = UserObject.getUserName(getMessagesController().getUser(sendAs.user_id));
+                } else {
+                    newMsgObj.sendAsName = getMessagesController().getChat(sendAs.channel_id).title;
+                }
+            }
+
             if (!newMsgObj.isForwarded() && (newMsgObj.type == 3 || videoEditedInfo != null || newMsgObj.type == 2) && !TextUtils.isEmpty(newMsg.attachPath)) {
                 newMsgObj.attachPathExists = true;
             }
@@ -3651,6 +3678,10 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     if (scheduleDate != 0) {
                         reqSend.schedule_date = scheduleDate;
                         reqSend.flags |= 1024;
+                    }
+
+                    if (sendAs != null) {
+                        reqSend.send_as = sendAs;
                     }
                     performSendMessageRequest(reqSend, newMsgObj, null, null, parentObject, params, scheduleDate != 0);
                     if (retryMessageObject == null) {
